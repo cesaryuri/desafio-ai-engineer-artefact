@@ -1,0 +1,52 @@
+# === Ambientes Virtuais ===
+.venv/
+venv/
+env/
+ENV/
+
+# === Variáveis de Ambiente ===
+.env
+.env.*
+!.env.example
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# === Jupyter Notebooks ===
+notebooks/.ipynb_checkpoints/
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# === Logs ===
+*.log
+logs/
+
+# === IDEs e Editores ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === macOS / Windows ===
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# === Testes e Cobertura ===
+.pytest_cache/
+.coverage
+
+# === Banco de Dados Local e Índices Vetoriais ===
+*.sqlite3
+*.db
+faiss_index_local/

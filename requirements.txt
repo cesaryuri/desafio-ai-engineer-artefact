@@ -1,0 +1,24 @@
+# --- Interface Web & Aplicação ---
+streamlit>=1.49.1
+python-dotenv>=1.1.1
+
+# --- Banco de Dados & Manipulação de Dados ---
+SQLAlchemy>=2.0.35
+pandas>=2.2.0
+numpy>=1.26.0
+matplotlib>=3.9.0
+seaborn>=0.13.2
+
+# --- RAG & Processamento de Documentos ---
+PyPDF2>=3.0.1
+faiss-cpu>=1.9.0
+
+# --- Orquestração de LLMs & Agentes (LangChain / LangGraph) ---
+langchain>=0.3.27
+langchain-core>=0.3.60
+langchain-community>=0.3.27
+langgraph>=0.6.7
+langchain-google-genai>=2.0.10
+langchain-openai>=0.3.30
+langchain-anthropic>=0.3.15
+langchain-ollama>=0.3.10
