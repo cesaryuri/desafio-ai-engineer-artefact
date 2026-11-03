@@ -10,11 +10,24 @@ from agent.llm import build_llm
 from agent.tools import make_tools
 from agent.graph import build_graph
 from prompts.system_prompt import build_system_prompt
+from ui.styles import apply_custom_styles
+from ui.components import (
+    ASSISTANT_AVATAR_SVG,
+    TOOL_META,
+    render_empty_state,
+    render_sidebar,
+    render_tool_tag,
+    render_user_message,
+)
 
 load_dotenv()
 
-st.set_page_config(page_title="Atendimento — Empório da Música", layout="centered")
-st.title("🎸 Empório da Música — Assistente Virtual")
+st.set_page_config(
+    page_title="Empório da Música — Assistente Virtual",
+    page_icon="♪",
+    layout="wide",
+)
+apply_custom_styles()
 
 DB_URL = os.getenv("DATABASE_URL")
 DB_ALLOWED_TABLES = os.getenv("DB_ALLOWED_TABLES", "")
@@ -44,31 +57,51 @@ tools = make_tools(db, vectorstore)
 llm, DEFAULT_MODEL = build_llm(tools)
 app = build_graph(llm, tools, max_tool_turns=MAX_STEPS)
 
-with st.sidebar:
-    st.caption(f"Modelo ativo: `{DEFAULT_MODEL}`")
-    if st.button("🗑️ Limpar conversa", use_container_width=True):
-        st.session_state["messages"] = [SystemMessage(SYSTEM_PROMPT)]
-        st.rerun()
-
 if "messages" not in st.session_state:
     st.session_state["messages"] = [SystemMessage(SYSTEM_PROMPT)]
 
-for msg in st.session_state["messages"]:
-    if isinstance(msg, HumanMessage):
-        with st.chat_message("user"):
-            st.markdown(msg.content)
-    elif isinstance(msg, AIMessage) and not msg.tool_calls:
-        texto = getattr(msg, "text", None) or msg.content
-        if texto:
-            with st.chat_message("assistant"):
-                st.markdown(texto)
 
-if user_input := st.chat_input("Digite sua dúvida sobre instrumentos, pedidos ou políticas da loja..."):
-    st.session_state["messages"].append(HumanMessage(user_input))
-    with st.chat_message("user"):
-        st.markdown(user_input)
+def reset_conversation() -> None:
+    st.session_state["messages"] = [SystemMessage(SYSTEM_PROMPT)]
 
-    with st.chat_message("assistant"):
+
+render_sidebar(model_name=DEFAULT_MODEL, on_reset_callback=reset_conversation)
+
+has_user_messages = any(isinstance(m, HumanMessage) for m in st.session_state["messages"])
+quick_prompt = None
+
+if not has_user_messages:
+    quick_prompt = render_empty_state()
+else:
+    for msg in st.session_state["messages"]:
+        if isinstance(msg, HumanMessage):
+            render_user_message(msg.content)
+        elif isinstance(msg, ToolMessage):
+            tool_name = msg.name or "tool"
+            meta = TOOL_META.get(tool_name, {"expander": f"Ver retorno da ferramenta ({tool_name})"})
+            render_tool_tag(tool_name)
+            with st.expander(meta["expander"]):
+                st.code(msg.content, language="json")
+        elif isinstance(msg, AIMessage) and not msg.tool_calls:
+            texto = getattr(msg, "text", None) or msg.content
+            if texto:
+                with st.chat_message("assistant", avatar=ASSISTANT_AVATAR_SVG):
+                    st.markdown(texto)
+
+chat_prompt = st.chat_input("Pergunte sobre instrumentos, pedidos ou políticas da loja…")
+st.markdown(
+    '<div class="em-footer-note">Respostas geradas por IA. Confirme preços e estoque com a loja.</div>',
+    unsafe_allow_html=True,
+)
+
+active_prompt = quick_prompt or chat_prompt
+
+if active_prompt:
+    st.session_state["messages"].append(HumanMessage(active_prompt))
+    if has_user_messages:
+        render_user_message(active_prompt)
+
+    with st.chat_message("assistant", avatar=ASSISTANT_AVATAR_SVG):
         with st.status("Processando sua solicitação...", expanded=True) as status:
             novas_msgs = []
             for event in app.stream(
@@ -77,12 +110,23 @@ if user_input := st.chat_input("Digite sua dúvida sobre instrumentos, pedidos o
             ):
                 for node_name, node_state in event.items():
                     if node_name == "agent":
-                        st.write("🧠 Analisando contexto...")
+                        for msg in node_state["messages"]:
+                            if isinstance(msg, AIMessage) and msg.tool_calls:
+                                first_tool = msg.tool_calls[0].get("name", "")
+                                meta = TOOL_META.get(first_tool)
+                                if meta:
+                                    status.update(label=meta["running_title"], state="running")
+                                    st.caption(meta["running_sub"])
                     elif node_name == "tools":
-                        st.write("🔍 Consultando base de dados / políticas...")
                         for msg in node_state["messages"]:
                             if isinstance(msg, ToolMessage):
-                                with st.expander(f"Ver retorno da ferramenta ({msg.name or 'tool'})"):
+                                tool_name = msg.name or "tool"
+                                meta = TOOL_META.get(
+                                    tool_name,
+                                    {"expander": f"Ver retorno da ferramenta ({tool_name})"},
+                                )
+                                render_tool_tag(tool_name)
+                                with st.expander(meta["expander"]):
                                     st.code(msg.content, language="json")
                     novas_msgs.extend(node_state["messages"])
 
@@ -98,3 +142,6 @@ if user_input := st.chat_input("Digite sua dúvida sobre instrumentos, pedidos o
 
         if resposta_final:
             st.markdown(resposta_final)
+
+    if quick_prompt:
+        st.rerun()
