@@ -44,7 +44,7 @@ def build_graph(llm, tools: list, max_tool_turns: int):
 
         resp = llm.invoke(msgs + pendentes + [aviso], config=RunnableConfig())
         print(f"usage_metadata={resp.usage_metadata}")
-        return {"messages": pendentes + [aviso, resp]}
+        return {"messages": pendentes + [resp]}
 
     def should_continue(state: AgentState) -> Literal["tools", "finalize", "__end__"]:
         last = state["messages"][-1]
