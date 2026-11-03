@@ -2,24 +2,27 @@ import os
 import shutil
 from langchain_community.vectorstores import FAISS
 from rag.pdf_processor import process_folder, create_text_chunks
+from agent.llm import get_embeddings
 
 INDEX_PATH = "faiss_index_local"
 
 
-def create_vector_store(chunks: list[str], embeddings, index_path: str = INDEX_PATH):
+def create_vector_store(chunks: list[str], index_path: str = INDEX_PATH):
+    embeddings = get_embeddings()
     vectorstore = FAISS.from_texts(texts=chunks, embedding=embeddings)
     vectorstore.save_local(index_path)
     return vectorstore
 
 
-def load_vector_store(embeddings, index_path: str = INDEX_PATH):
+def load_vector_store(index_path: str = INDEX_PATH):
+    embeddings = get_embeddings()
     arquivo_index = os.path.join(index_path, "index.faiss")
     if os.path.exists(arquivo_index):
         return FAISS.load_local(index_path, embeddings, allow_dangerous_deserialization=True)
     return None
 
 
-def initialize_rag_system(embeddings, context_dir: str = "data", index_dir: str = INDEX_PATH):
+def initialize_rag_system(context_dir: str = "data", index_dir: str = INDEX_PATH):
     needs_update = False
     index_file = os.path.join(index_dir, "index.faiss")
 
@@ -39,7 +42,7 @@ def initialize_rag_system(embeddings, context_dir: str = "data", index_dir: str 
                             break
 
     if not needs_update:
-        vectorstore = load_vector_store(embeddings=embeddings, index_path=index_dir)
+        vectorstore = load_vector_store(index_path=index_dir)
         if vectorstore:
             return vectorstore
 
@@ -51,4 +54,4 @@ def initialize_rag_system(embeddings, context_dir: str = "data", index_dir: str 
     if not chunks:
         return None
 
-    return create_vector_store(chunks=chunks, embeddings=embeddings, index_path=index_dir)
+    return create_vector_store(chunks=chunks, index_path=index_dir)
