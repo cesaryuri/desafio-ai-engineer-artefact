@@ -6,7 +6,7 @@ from langchain_core.runnables import RunnableConfig
 
 from db.database import get_db
 from rag.vectorstore import initialize_rag_system
-from agent.llm import build_llm, get_embeddings
+from agent.llm import build_llm
 from agent.tools import make_tools
 from agent.graph import build_graph
 from prompts.system_prompt import build_system_prompt
@@ -17,14 +17,15 @@ st.set_page_config(page_title="Atendimento — Empório da Música", layout="cen
 st.title("🎸 Empório da Música — Assistente Virtual")
 
 DB_URL = os.getenv("DATABASE_URL")
+DB_ALLOWED_TABLES = os.getenv("DB_ALLOWED_TABLES", "")
+ALLOWED = [t.strip() for t in DB_ALLOWED_TABLES.split(",") if t.strip()] or None
 MAX_STEPS = int(os.getenv("MAX_AGENT_STEPS", "10"))
 
 
 @st.cache_resource(show_spinner=True)
 def load_resources():
     db = get_db(db_url=DB_URL)
-    embeddings = get_embeddings()
-    vectorstore = initialize_rag_system(embeddings=embeddings)
+    vectorstore = initialize_rag_system()
     return db, vectorstore
 
 
@@ -33,7 +34,7 @@ db, vectorstore = load_resources()
 schema_info = ""
 if db:
     try:
-        schema_info = db.get_table_info()
+        schema_info = db.get_table_info(table_names=ALLOWED)
     except Exception as e:
         st.error(f"Erro ao ler esquema do banco: {e}")
 

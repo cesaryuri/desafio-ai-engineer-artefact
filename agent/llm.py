@@ -4,8 +4,8 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 from langchain_anthropic import ChatAnthropic
 
-DEFAULT_MODEL = os.getenv("LLM_MODEL", "gemini-3.8-flash")  # gemini-3.8-flash | gpt-5.4-mini | claude-haiku-4-5-20251001 | claude-sonnet-5
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "google")  # google | openai | anthropic | ollama
+DEFAULT_MODEL = os.getenv("LLM_MODEL", "gpt-5.4-mini")  # gemini-3.8-flash | gpt-5.4-mini | claude-haiku-4-5-20251001 | claude-sonnet-5
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")  # google | openai | anthropic | ollama
 
     #   Google:
     #   gemini-3.8-flash
