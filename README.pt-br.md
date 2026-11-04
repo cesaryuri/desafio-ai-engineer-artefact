@@ -1,6 +1,6 @@
 # Empório da Música — Assistente Virtual de Atendimento
 
-[![English: EN](https://img.shields.io/badge/Language-English-blue.svg)](README.md)
+[![Leia em Inglês](https://img.shields.io/badge/📖_Leia_em-English-blue.svg)](README.md)
 
 Um assistente conversacional full-stack para uma loja fictícia de instrumentos musicais em Campo Grande, Brasil. Ele responde a dúvidas de clientes sobre produtos, preços, estoque, promoções, pedidos e políticas da loja.
 

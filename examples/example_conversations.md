@@ -1,6 +1,7 @@
 # Real Conversation Examples — Empório da Música Virtual Assistant
 
-[![Português: PT-BR](https://img.shields.io/badge/Language-Portugu%C3%AAs_(PT--BR)-green.svg)](exemplos_conversas.md)
+[![Back to README](https://img.shields.io/badge/⬅_Back_to-README-blue.svg)](../README.md)
+[![Read in Portuguese](https://img.shields.io/badge/📖_Read_in-Portuguese_(PT--BR)-green.svg)](exemplos_conversas.md)
 
 This document records the actual, complete execution of a dialogue with the virtual assistant, covering all scenarios required by the technical challenge:
 

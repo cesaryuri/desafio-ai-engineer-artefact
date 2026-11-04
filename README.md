@@ -1,6 +1,6 @@
 # Empório da Música — AI Customer Service Assistant
 
-[![Português: PT-BR](https://img.shields.io/badge/Language-Portugu%C3%AAs_(PT--BR)-green.svg)](README.pt-br.md)
+[![Read in Portuguese](https://img.shields.io/badge/📖_Read_in-Portuguese_(PT--BR)-green.svg)](README.pt-br.md)
 
 A full-stack conversational assistant for a fictional music store in Campo Grande, Brazil. It answers customer questions about products, prices, stock, promotions, orders, and store policies.
 
