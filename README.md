@@ -1,5 +1,7 @@
 # Empório da Música — AI Customer Service Assistant
 
+[![Português: PT-BR](https://img.shields.io/badge/Language-Portugu%C3%AAs_(PT--BR)-green.svg)](README.pt-br.md)
+
 A full-stack conversational assistant for a fictional music store in Campo Grande, Brazil. It answers customer questions about products, prices, stock, promotions, orders, and store policies.
 
 The application combines **Text-to-SQL** for structured store data and **RAG** for policy documents. **LangGraph** orchestrates the agent workflow, and **Streamlit** provides the chat interface.
@@ -11,6 +13,9 @@ The application combines **Text-to-SQL** for structured store data and **RAG** f
 | ![Main application interface](examples/images/app-home.png) | ![Assistant conversation](examples/images/app-conversation.png) |
 
 ## Example Interactions
+
+> 📸 **Full Test Transcripts & Screenshots:**  
+> For complete step-by-step logs, SQL queries, policy retrieval results, and interface screenshots, see [**`examples/example_conversations.md`**](examples/example_conversations.md).
 
 ### 1. Product and Availability Query
 
@@ -192,10 +197,6 @@ streamlit run app.py
 ```
 
 On the first run, the application cleans and imports the six CSV files into SQLite, creates the SQL views, and indexes `politicas_loja.pdf` in the local FAISS store.
-
-## Example Conversations
-
-See [`examples/exemplos_conversas.md`](examples/exemplos_conversas.md) for five documented scenarios, including product availability, order tracking, policy questions, and requests that require both retrieval tools.
 
 ## Limitations and Future Improvements
 

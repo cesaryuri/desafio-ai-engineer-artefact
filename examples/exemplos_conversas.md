@@ -1,5 +1,7 @@
 # Exemplos Reais de Conversas — Assistente Virtual Empório da Música
 
+[![English: EN](https://img.shields.io/badge/Language-English-blue.svg)](example_conversations.md)
+
 Este documento registra a execução real e completa de um diálogo com o assistente virtual, cobrindo todos os cenários exigidos pelo desafio técnico:
 1. Recomendação de instrumentos para iniciantes e checagem de especificações;
 2. Consulta de promoções ativas e aplicação de desconto no PIX;
