@@ -29,23 +29,50 @@ html, body, [class*="css"] {
     background-color: var(--bg-main);
 }
 
-/* Centraliza container principal no limite de 760px do Figma */
-.block-container {
-    max-width: 820px !important;
+/* Alinha container principal e barra inferior do chat com a mesma largura (780px) */
+[data-testid="stMainBlockContainer"] {
+    max-width: 780px !important;
+    width: 100% !important;
     padding-top: 2.5rem !important;
-    padding-bottom: 4rem !important;
+    padding-bottom: 3rem !important;
+}
+
+[data-testid="stBottomBlockContainer"] {
+    max-width: 780px !important;
+    width: 100% !important;
+    padding-bottom: 0.75rem !important;
+}
+
+[data-testid="stBottomBlockContainer"]::after {
+    content: "Respostas geradas por IA. Confirme preços e estoque com a loja.";
+    display: block;
+    text-align: center;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-top: 8px;
+}
+
+[data-testid="stBottom"] > div {
+    background-color: var(--bg-main) !important;
+}
+
+[data-testid="stChatInput"] {
+    width: 100% !important;
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 14px !important;
+}
+
+[data-testid="stChatInputSubmitButton"] {
+    background-color: var(--gold) !important;
+    color: var(--gold-dark-text) !important;
+    border-radius: 10px !important;
 }
 
 /* Sidebar */
 [data-testid="stSidebar"] {
     background-color: var(--bg-sidebar) !important;
     border-right: 1px solid var(--border-color);
-}
-
-[data-testid="stSidebar"] .block-container {
-    padding-top: 1.5rem !important;
-    padding-left: 1.25rem !important;
-    padding-right: 1.25rem !important;
 }
 
 .em-brand {

@@ -25,7 +25,7 @@ load_dotenv()
 st.set_page_config(
     page_title="Empório da Música — Assistente Virtual",
     page_icon="♪",
-    layout="wide",
+    layout="centered",
 )
 apply_custom_styles()
 
@@ -89,10 +89,6 @@ else:
                     st.markdown(texto)
 
 chat_prompt = st.chat_input("Pergunte sobre instrumentos, pedidos ou políticas da loja…")
-st.markdown(
-    '<div class="em-footer-note">Respostas geradas por IA. Confirme preços e estoque com a loja.</div>',
-    unsafe_allow_html=True,
-)
 
 active_prompt = quick_prompt or chat_prompt
 
