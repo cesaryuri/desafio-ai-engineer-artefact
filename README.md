@@ -6,10 +6,9 @@ The application combines **Text-to-SQL** for structured store data and **RAG** f
 
 ## Application Preview
 
-<!-- Add two real screenshots of the application to docs/images/. -->
 | Main interface | Example conversation |
 |---|---|
-| ![Main application interface](docs/images/app-home.png) | ![Assistant conversation](docs/images/app-conversation.png) |
+| ![Main application interface](examples/images/app-home.png) | ![Assistant conversation](examples/images/app-conversation.png) |
 
 ## Example Interactions
 
@@ -114,7 +113,7 @@ desafio-ai-engineer-artefact/
 ├── agent/        # Chatbot initialization, LangGraph workflow, LLMs, and tools
 ├── data/         # Six CSV files and store policy PDF
 ├── db/           # CSV cleaning, SQLite setup, and SQL views
-├── docs/images/  # UI screenshots
+├── examples/images/  # UI screenshots
 ├── examples/     # Five example conversation scenarios
 ├── notebooks/    # Exploratory analysis of tables and business rules
 ├── prompts/      # System prompt and customer-service rules
@@ -203,10 +202,12 @@ See [`examples/exemplos_conversas.md`](examples/exemplos_conversas.md) for five 
 **Current limitations**
 - SQLite and the FAISS index are local to the application.
 - Conversation context is maintained only during the active Streamlit session; it is not persisted across sessions.
+- **Context cross-contamination in long dialogues:** In extended multi-turn sessions (e.g. querying a customer order and later requesting general store support contacts), the LLM can occasionally pull customer-specific details (such as the customer phone or email from previous tool calls) instead of official store contacts. When asked to clarify, the agent correctly queries \search_store_policies\ and self-corrects with official store contacts.
 - SQL validation is basic and is not production-grade database security.
 - The current workflow uses a single configured LLM rather than selecting models by task.
 
 **Possible improvements**
+- **Session context isolation & entity boundaries:** Distinguish between personal customer-order data and generic store policies to prevent context bleeding in long multi-turn interactions.
 - **Task-specific model evaluation:** compare models with different capability, cost, and latency profiles. A stronger model could handle complex Text-to-SQL generation, while smaller local models (such as Llama or Gemma variants) and local embedding models could be evaluated for policy retrieval and simpler language tasks. A lightweight model could also be tested for synthesizing final answers after tool execution. Any model selection strategy should be validated against answer quality, latency, and cost before adoption.
 - **Quality evaluation:** build a test set covering SQL correctness, retrieval relevance, factual consistency, and answer usefulness. Frameworks such as DeepEval could support automated evaluation, complemented by review from people familiar with the store's products and policies.
 - **Production readiness:** add authenticated customer sessions, server-side order authorization, persistent conversation history, and human-agent handoff with an automatic conversation summary.
