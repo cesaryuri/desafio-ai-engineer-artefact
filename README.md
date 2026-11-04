@@ -1,225 +1,189 @@
-# 🎸 Empório da Música — Assistente Virtual Inteligente
+# Empório da Música — AI Customer Service Assistant
 
-Assistente virtual conversacional Full-Stack desenvolvido para a **Empório da Música** (Campo Grande/MS). O projeto adota uma **arquitetura híbrida de recuperação de dados** — unindo consultas relacionais em tempo real (**Text-to-SQL em SQLite com Views Semânticas**) e busca semântica em documentos (**RAG Vetorial com FAISS**) — orquestrada por um grafo de agentes em **LangGraph**, com interface customizada a partir de protótipo no **Figma** e suporte a **entrada por voz (Speech-to-Text)**.
+A full-stack conversational assistant for a fictional music store in Campo Grande, Brazil. It answers customer questions about products, prices, stock, promotions, orders, and store policies.
 
-> 📄 **Exemplos de Conversas:** Veja os 5 cenários reais documentados em [`examples/exemplos_conversas.md`](examples/exemplos_conversas.md).
+The application combines **Text-to-SQL** for structured store data and **RAG** for policy documents. **LangGraph** orchestrates the agent workflow, and **Streamlit** provides the chat interface.
 
----
+## Architecture
 
-## 📸 Demonstração Visual e Funcionalidades
-
-> *(Espaço reservado para as capturas de tela da aplicação em funcionamento)*
-
-| Tela Inicial (Design Figma) | Consulta Híbrida e Inspeção de Tools |
-| :---: | :---: |
-| ![Estado Inicial](docs/images/01_estado_inicial.png) | ![Conversa e Tools](docs/images/02_conversa_tools.png) |
-| *Hero institucional, status do sistema em tempo real e atalhos rápidos* | *Transparência nas chamadas `query_sql` e `search_store_policies`* |
-
-| Entrada por Voz (Speech-to-Text) | Transbordo Humano e Exportação `.md` |
-| :---: | :---: |
-| ![Entrada por Áudio](docs/images/03_entrada_audio.png) | ![Sidebar e Exportação](docs/images/04_exportacao_conversa.png) |
-| *Gravação nativa no chat transcrita via `gpt-4o-mini-transcribe`* | *Exportação do histórico completo em Markdown pela sidebar* |
-
-### Diferenciais Implementados Além do Escopo Básico
-- 🎙️ **Atendimento por Voz (STT)**: O cliente pode falar diretamente pelo microfone na barra de chat; o áudio é transcrito em português (`gpt-4o-mini-transcribe`) e processado pelo mesmo grafo de agentes.
-- 🎨 **UI Autoral Fiel ao Figma**: Interface escura modularizada seguindo responsabilidade única (`ui/sidebar.py`, `ui/welcome.py`, `ui/chat.py`, `ui/styles.py`), com indicadores de conexão do banco/RAG, chips de ação rápida e visualização expansível do JSON retornado por cada ferramenta.
-- 📥 **Exportação de Conversa (`.md`)**: Botão nativo na barra lateral para baixar o histórico completo do atendimento em Markdown.
-- 🧹 **Pipeline de Sanitização CSV → SQLite + Views**: Os arquivos CSV brutos não são lidos diretamente pelo LLM; passam por limpeza, tipagem e consolidação em *Views* SQL antes de qualquer consulta.
-
----
-
-## 1. Arquitetura da Solução
-
-O diagrama abaixo representa de forma fiel os dois estágios reais do código: **(1) Ingestão, Sanitização e Indexação** (`db/` e `rag/`) e **(2) Orquestração do Agente no LangGraph** (`agent/` e `app.py`):
+CSV data is cleaned and loaded into SQLite. The store policy PDF is indexed in FAISS. A LangGraph agent chooses the appropriate retrieval tool and returns the response through Streamlit.
 
 ```mermaid
-flowchart TB
-    subgraph Ingestao["1. Camada de Dados e Indexação (Inicialização c/ Cache)"]
-        CSV["6 Arquivos CSV Brutos\n(products, categories, promotions,\norders, order_items, customers)"] --> CLEAN["Sanitização e Tipagem\n_clean_dataframe (db/database.py)"]
-        CLEAN --> SQLITE[("Banco SQLite\nemporio_musica.db")]
-        SQLITE --> VIEWS["Views Semânticas (db/views.sql)\n• vw_catalogo_produtos\n• vw_pedidos_detalhados"]
-
-        PDF["Documento Institucional\npoliticas_loja.pdf"] --> CHUNK["Extração pypdf + Chunking\n(chunk_size=1000, overlap=200)"]
-        CHUNK --> FAISS[("Índice Vetorial Local\nFAISS + Cache mtime")]
-    end
-
-    subgraph Execucao["2. Fluxo de Atendimento em Tempo Real (app.py + LangGraph)"]
-        USER["👤 Cliente\n(Texto, Chip Rápido ou Áudio)"] --> STT{"Entrada é Áudio?"}
-        STT -- "Sim" --> WHISPER["🎙️ Transcrição STT\ngpt-4o-mini-transcribe"]
-        STT -- "Não" --> AGENT
-        WHISPER --> AGENT["🧠 agent_node (LangGraph)\ngpt-5.4-mini + System Prompt"]
-
-        AGENT -- "Possui tool_calls\n(turnos < max_tool_turns)" --> TOOLS["🔧 ToolNode (agent/tools.py)"]
-        TOOLS -- "query_sql (SELECT seguro)" --> VIEWS
-        TOOLS -- "search_store_policies (top-k=5)" --> FAISS
-        VIEWS --> TOOLS
-        FAISS --> TOOLS
-        TOOLS -- "ToolMessage (JSON)" --> AGENT
-
-        AGENT -- "Limite de passos atingido" --> FINALIZE["🛡️ finalize_node\nSíntese sem novas tools"]
-        AGENT -- "Resposta pronta" --> UI["♪ Interface Streamlit\nResposta + Histórico em Sessão"]
-        FINALIZE --> UI
-    end
+flowchart LR
+    CSV["CSV files"] --> SQL[("SQLite")]
+    PDF["Store policies PDF"] --> FAISS[("FAISS vector index")]
+    USER["Customer\n(text message)"] --> AGENT["LangGraph agent\n(LLM + context)"]
+    AGENT <--> TOOLS{"Retrieval tools"}
+    TOOLS <--> SQL
+    TOOLS <--> FAISS
+    AGENT --> UI["Streamlit chat"]
 ```
 
-### Estrutura de Pastas
+## Key Features
+
+- **Product catalog:** prices, specifications, promotions, and availability.
+- **Order tracking:** order details and status.
+- **Store policies:** answers about shipping, returns, warranties, and procedures.
+- **Hybrid retrieval:** SQL for structured data and vector search for policy documents.
+- **Custom chat UI:** Streamlit interface with tool inspection, conversation export to Markdown, and optional voice input.
+
+## Technology and Design Decisions
+
+| Area | Technology | Purpose |
+|---|---|---|
+| Agent orchestration | LangGraph | Manages the agent–tool workflow and limits tool iterations |
+| LLM | `gpt-5.4-mini` | Interprets requests, generates SQL, and selects retrieval tools |
+| Structured retrieval | SQLite + SQL views | Supports precise product, inventory, promotion, and order queries |
+| Semantic retrieval | FAISS + `text-embedding-3-small` | Retrieves relevant passages from store policies |
+| PDF processing | pypdf | Extracts policy text before chunking and indexing |
+| Interface | Streamlit | Provides the customer-facing chat |
+
+### Exploratory Analysis and Data Preparation
+
+Before implementing the retrieval workflow, I explored the six CSV tables and the store policy document in `notebooks/analise_exploratoria.ipynb`. This helped identify table relationships, relevant fields, data inconsistencies, and business rules that needed to be reflected in the application.
+
+Based on that analysis, the CSV files are cleaned and loaded into SQLite during initialization instead of being passed directly to the LLM or manipulated through generated Python/Pandas code at runtime.
+
+The preparation includes:
+- Trimming unnecessary whitespace and normalizing selected values.
+- Setting the stock of discontinued products to zero, preventing them from appearing available even when the source CSV contains a positive quantity.
+- Extracting selected JSON product attributes into relational fields to make them easier to query.
+
+SQLite and the SQL views provide a structured and repeatable retrieval layer. The views `vw_catalogo_produtos` and `vw_pedidos_detalhados` consolidate catalog and order information and apply business rules, including the 5% Pix discount not combining with active promotions. This reduces the amount of joining and business-rule calculation the LLM must perform at query time, helping avoid inconsistent SQL and incorrect answers.
+
+The `query_sql` tool includes basic checks intended to restrict execution to read-only queries. These checks are an application-level safeguard, not a complete database security boundary.
+
+### Hybrid Retrieval: Text-to-SQL and RAG
+
+The two data sources require different retrieval strategies:
+
+- **Text-to-SQL:** used for precise questions about products, prices, promotions, inventory, and orders. The agent generates SQL against the prepared SQLite schema and views.
+- **RAG:** used for information in `politicas_loja.pdf`. The PDF text is split into 1,000-character chunks with 200-character overlap, embedded using `text-embedding-3-small`, and stored in a local FAISS index. The retriever returns the five most relevant chunks.
+
+The agent can call both tools in one interaction when a question requires structured data and policy information.
+
+### LLM Choice
+
+The `gpt-5.4-mini` model was selected to balance reasoning capability, response latency, and operational cost. Text-to-SQL is the most demanding part of this application because it requires interpreting relational schemas, joins, filters, and business rules before generating a valid query. A larger model could increase cost without proportional benefits for the overall workflow, while a smaller model may struggle with more complex SQL generation.
+
+The model choice does not mean every component requires a large LLM. Embedding generation and vector retrieval are separate tasks, and smaller local models can be sufficient for many RAG use cases, such as embedding documents or producing straightforward answers grounded in retrieved passages.
+
+### Agent Workflow, Prompt Strategy, and Conversation Context
+
+LangGraph coordinates an agent node and a tool node. The agent decides whether to answer directly or call `query_sql` and/or `search_store_policies`. It can use tool results in another agent turn before producing the final answer. A configurable tool-iteration limit routes execution to a finalization step.
+
+Prompt instructions define how the agent should use the available sources and tools, keep answers concise and customer-oriented, suggest alternatives for unavailable products, and handle out-of-scope or prompt-injection requests. They also guide the agent to base factual answers on retrieved information instead of filling gaps with assumptions. These instructions improve consistency but are not a substitute for application-level security.
+
+Conversation context is maintained in Streamlit's `st.session_state` for the active session. Persistent history and mandatory login were not included because the challenge focuses on an informational customer-service assistant, not authenticated transactions or ticket management. Session-scoped context supports follow-up questions without adding sign-in friction for store visitors. Customers can export the conversation as Markdown from the sidebar.
+
+## Project Structure
 
 ```text
 desafio-ai-engineer-artefact/
-├── .streamlit/
-│   └── config.toml                # Tema escuro nativo alinhado à paleta do Figma
-├── agent/
-│   ├── chatbot.py                 # Inicialização unificada do assistente (SQLite, RAG, Prompt e Grafo)
-│   ├── graph.py                   # Grafo LangGraph (agent_node, ToolNode, finalize_node, should_continue)
-│   ├── llm.py                     # Instanciação multi-provider de LLMs, Embeddings e transcrição de áudio
-│   └── tools.py                   # Ferramentas query_sql (c/ trava read-only) e search_store_policies
-├── data/                          # Base bruta fornecida (6 CSVs + politicas_loja.pdf)
-├── db/
-│   ├── database.py                # Pipeline CSV -> sanitização Pandas -> SQLite + execução de views.sql
-│   └── views.sql                  # Views vw_catalogo_produtos e vw_pedidos_detalhados
-├── docs/images/                   # Capturas de tela da interface e fluxos de conversa
-├── examples/
-│   └── exemplos_conversas.md      # 5 cenários reais de conversação documentados
-├── notebooks/
-│   └── analise_exploratoria.ipynb # EDA prévia das tabelas, cruzamentos e regras de negócio
-├── prompts/
-│   ├── prompt_rules.py            # Postura comercial, regras de negócio e _CHAIN_OF_THOUGHT
-│   └── system_prompt.py           # Montagem do prompt operacional com injeção do schema SQL
-├── rag/
-│   ├── pdf_processor.py           # Leitura do PDF e divisão em chunks semânticos
-│   └── vectorstore.py             # Criação/carregamento do índice FAISS com validação de timestamp
-├── ui/
-│   ├── chat.py                    # Histórico, captura texto/áudio e streaming das tools
-│   ├── sidebar.py                 # Barra lateral, status do sistema e exportação .md
-│   ├── styles.py                  # Folha de estilos CSS fiel ao protótipo do Figma
-│   └── welcome.py                 # Estado inicial (Hero, card de boas-vindas e atalhos rápidos)
-├── app.py                         # Ponto de entrada Streamlit (orquestração de sessão, áudio e streaming)
-└── requirements.txt               # Dependências do projeto
+├── .streamlit/   # Streamlit theme configuration
+├── agent/        # Chatbot initialization, LangGraph workflow, LLMs, and tools
+├── data/         # Six CSV files and store policy PDF
+├── db/           # CSV cleaning, SQLite setup, and SQL views
+├── docs/images/  # UI screenshots
+├── examples/     # Five example conversation scenarios
+├── notebooks/    # Exploratory analysis of tables and business rules
+├── prompts/      # System prompt and customer-service rules
+├── rag/          # PDF processing and FAISS index
+├── ui/           # Modular Streamlit interface
+├── app.py        # Application entry point
+└── requirements.txt
 ```
 
----
+## Installation and Execution
 
-## 2. Instruções de Instalação e Execução
+### Requirements
 
-### Pré-requisitos
-- **Python 3.11+**
-- Chave de API da OpenAI (`OPENAI_API_KEY`) — ou de outro provedor configurado no `.env`.
+- Python 3.11+
+- OpenAI API key for the default LLM and embeddings (also used by the optional voice-input feature)
 
-### Passo a passo
+### 1. Clone the repository
 
-1. **Clone o repositório e acesse o diretório:**
-   ```bash
-   git clone https://github.com/cesaryuri/desafio-ai-engineer-artefact.git
-   cd desafio-ai-engineer-artefact
-   ```
+```bash
+git clone https://github.com/cesaryuri/desafio-ai-engineer-artefact.git
+cd desafio-ai-engineer-artefact
+```
 
-2. **Crie e ative um ambiente virtual:**
-   ```bash
-   # Windows (PowerShell)
-   python -m venv .venv
-   .\.venv\Scripts\Activate.ps1
+### 2. Create and activate a virtual environment
 
-   # Linux / macOS
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
+**Windows (PowerShell)**
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
 
-3. **Instale as dependências:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+**Linux / macOS**
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
 
-4. **Configure o arquivo `.env`:**
-   Copie o modelo `.env.example` para `.env` e insira sua chave da OpenAI:
-   ```bash
-   cp .env.example .env
-   ```
-   Variáveis principais do `.env`:
-   ```env
-   LLM_PROVIDER="openai"
-   LLM_MODEL="gpt-5.4-mini"
-   EMBEDDING_PROVIDER="openai"
-   EMBEDDING_MODEL="text-embedding-3-small"
-   OPENAI_API_KEY="sua-chave-openai-aqui"
+### 3. Install dependencies
 
-   DATABASE_URL="sqlite:///db/emporio_musica.db"
-   MAX_AGENT_STEPS="10"
-   ```
+```bash
+pip install -r requirements.txt
+```
 
-5. **Inicie a aplicação:**
-   ```bash
-   streamlit run app.py
-   ```
-   > Na primeira execução, o sistema sanitiza automaticamente os 6 CSVs, constrói o banco `db/emporio_musica.db` com as views analíticas e indexa o `politicas_loja.pdf` na pasta `faiss_index_local/`.
+### 4. Configure environment variables
 
----
+Copy `.env.example` to `.env` and add your API key.
 
-## 3. Justificativa das Decisões Técnicas
+**Linux / macOS**
+```bash
+cp .env.example .env
+```
 
-### 3.1. Por que migrar os CSVs para SQLite + Views em vez de consultar CSV direto?
-Uma abordagem comum em protótipos rápidos é carregar os CSVs diretamente em DataFrames Pandas a cada pergunta (usando agentes de código Python) ou injetar linhas de CSV no prompt. Descartei essa abordagem por três motivos práticos identificados na análise exploratória (`notebooks/analise_exploratoria.ipynb`):
-1. **Sanitização e Tratamento de Anomalias (`db/database.py`)**: Na função [`_clean_dataframe`](db/database.py), antes de persistir no SQLite, os dados passam por três tratamentos descobertos na EDA:
-   - Remoção de espaços residuais (`strip()`) em todas as colunas de texto;
-   - **Correção de anomalia de estoque**: produtos com `status == "discontinued"` que constavam no CSV bruto com `stock_quantity > 0` têm o estoque forçado para `0`, evitando que o assistente ofereça como disponíveis itens fora de linha;
-   - **Desempacotamento da coluna JSON `specs`**: extração dos atributos `strings` (nylon/aço), `electronics` e `color` para colunas relacionais diretas na tabela `products`, facilitando filtros SQL simples.
-2. **Segurança e Determinismo**: Agentes que executam Python sobre DataFrames (`eval`/`exec`) abrem brechas de execução de código arbitrário e frequentemente erram cruzamentos entre múltiplas tabelas (`orders` ↔ `order_items` ↔ `customers` ↔ `products`). No SQLite, a tool `query_sql` aceita exclusivamente comandos `SELECT` (bloqueando `DROP`, `DELETE`, `UPDATE`, `INSERT`, `PRAGMA`, etc. via regex) e opera com integridade relacional.
-3. **Encapsulamento da Regra de Negócio em Views (`db/views.sql`)**:
-   - A tabela `promotions` possui promoções ativas (`is_active = 1`) e inativas (`is_active = 0`). Além disso, o PDF de políticas define que o **desconto de 5% no PIX não é cumulativo com promoções ativas**.
-   - Se deixássemos o LLM montar o `JOIN` e calcular porcentagens a cada pergunta, haveria risco de alucinação aritmética ou aplicação de promoção expirada.
-   - Com as views `vw_catalogo_produtos` e `vw_pedidos_detalhados` priorizadas nas regras de negócio do agente, o banco já entrega prontos o `final_price_brl`, o `pix_price_brl` (não cumulativo) e o `availability_status`, eliminando erros de cálculo aritmético pelo LLM.
+**Windows (PowerShell)**
+```powershell
+Copy-Item .env.example .env
+```
 
-### 3.2. Arquitetura Híbrida de Recuperação (Text-to-SQL + RAG Vetorial)
-Os dados da Empório da Música possuem naturezas distintas e exigem mecanismos complementares:
-- **Consultas Exatas, Filtros de Preço e Pedidos → `query_sql` (SQLite)**: Vetorizar catálogo de produtos ou pedidos para busca por similaridade (RAG puro) funciona mal para filtros numéricos (`preco <= 1000`), checagem de estoque exato (`stock_quantity > 0`) ou busca de pedido por ID/CPF. O SQL resolve essas perguntas com precisão de 100%.
-- **Políticas Comerciais, Frete, Trocas e Garantia → `search_store_policies` (FAISS RAG)**: Já o conteúdo de `politicas_loja.pdf` é textual e semântico. Ele é dividido em blocos (`chunk_size=1000`, `chunk_overlap=200`) e indexado localmente no FAISS com embeddings `text-embedding-3-small`. O módulo `rag/vectorstore.py` grava um hash de data de modificação (`mtime`) do PDF em `index_meta.json`, evitando reindexações desnecessárias a cada boot.
-- **Combinação no Mesmo Turno**: Como ambas são ferramentas independentes acopladas ao nó `ToolNode` do LangGraph, o agente consegue acionar `query_sql` e `search_store_policies` na mesma pergunta quando o cliente faz uma dúvida mista (ex.: consultar o status de um pedido e perguntar se ainda cabe devolução por arrependimento).
+Example configuration:
 
-### 3.3. Escolha do Framework (`LangGraph`) e do LLM (`gpt-5.4-mini`)
-- **LangGraph (`agent/graph.py`)**: Permite modelar explicitamente o ciclo `agent` → `tools` → `agent` com um contador de segurança (`tool_turns < max_tool_turns`). Caso uma consulta complexa atinja o limite de passos, o fluxo desvia para o nó `finalize_node`, que força o LLM a sintetizar a melhor resposta possível com os dados já coletados em vez de quebrar com erro de recursão.
-- **LLM (`gpt-5.4-mini` com `temperature=0.2`)**: Excelente velocidade de resposta e aderência a chamadas de ferramentas estruturadas (SQL e RAG) com custo por token muito baixo. O módulo `agent/llm.py` foi desenhado de forma agnóstica, permitindo trocar via `.env` para Google Gemini, Anthropic Claude ou modelos locais via Ollama sem alterar o restante do código.
+```env
+LLM_PROVIDER="openai"
+LLM_MODEL="gpt-5.4-mini"
+EMBEDDING_PROVIDER="openai"
+EMBEDDING_MODEL="text-embedding-3-small"
+OPENAI_API_KEY="your-openai-api-key"
+DATABASE_URL="sqlite:///db/emporio_musica.db"
+MAX_AGENT_STEPS="10"
+```
 
-### 3.4. Estratégia de Prompt e Postura de Atendimento
-Separada entre `prompts/prompt_rules.py` e `prompts/system_prompt.py`:
-- **Visão de Cliente vs. Relatório de Vendedor**: O chatbot conversa com o **cliente final**, não com o gerente de estoque. Por isso, o prompt instrui o agente a consultar `stock_quantity` para saber a disponibilidade, mas responder de forma natural e sucinta (*"Temos disponível"*), sem despejar quantidades numéricas de estoque ou campos internos que o cliente não pediu.
-- **Sugestão Proativa de Alternativas**: Quando o cliente busca um item que está sem estoque (`stock_quantity = 0`) ou fora de linha, o agente não encerra a conversa num beco sem saída: ele avisa que não há pronta entrega e imediatamente busca modelos similares disponíveis na mesma categoria.
-- **Guardrails**: Proteção explícita contra perguntas fora do universo da loja e contra tentativas de *prompt injection* (extração de prompt de sistema ou regras internas).
+Do not commit `.env` or expose API keys.
 
-### 3.5. Persistência de Conversa
-- **Memória de Sessão (`st.session_state["messages"]`)**: Mantém toda a cadeia da conversa ativa durante o atendimento, permitindo perguntas de acompanhamento naturais (como *"e quanto fica à vista?"* ou *"tem juros no cartão?"* referindo-se ao instrumento citado anteriormente).
-- **Justificativa de Produto**: Em um chat rápido de atendimento de loja (análogo a um balcão de dúvidas estilo Mercado Livre ou WhatsApp rápido), o cliente quer resolver sua dúvida de produto ou pedido na hora, sem precisar criar conta para abrir um histórico antigo. Para quem deseja guardar o registro do atendimento, incluí o botão **📥 Exportar conversa (.md)** na sidebar.
+### 5. Run the application
 
----
+```bash
+streamlit run app.py
+```
 
-## 4. Limitações Conhecidas e Melhorias Futuras
+On the first run, the application cleans and imports the six CSV files into SQLite, creates the SQL views, and indexes `politicas_loja.pdf` in the local FAISS store.
 
-Pensando na evolução deste MVP para um produto real de atendimento em produção:
+## Example Conversations
 
-1. **Transbordo Humano Inteligente com Resumo Automático para o Suporte**:
-   - Hoje, quando o cliente pede para falar com um atendente humano ou relata um problema mais sensível (como defeito técnico ou atraso de transportadora), o assistente fornece os canais oficiais de WhatsApp, telefone e e-mail.
-   - **Melhoria**: Antes de transferir para o suporte humano, o próprio LLM poderia gerar automaticamente um **resumo estruturado do atendimento** (identificação do cliente, número do pedido consultado, produto de interesse e motivo do contato) e enviá-lo direto para o painel do atendente humano (ou gerar um link de WhatsApp já com o protocolo resumido), evitando que o cliente precise repetir toda a história para o atendente.
-2. **Identificação de Usuário (`user_id`), Auditoria e Retomada de Contexto**:
-   - Guardar o identificador do cliente (`customer_id` / telefone / sessão autenticada) vinculado a um checkpointer persistente do LangGraph (`PostgresSaver`). Isso permitiria:
-     - **Auditoria de qualidade**: Analisar internamente quais produtos os clientes mais procuram e não encontram em estoque;
-     - **Memória de longo prazo**: Se o mesmo cliente voltar no dia seguinte, o assistente já sabe qual instrumento ele estava negociando ou qual pedido ele abriu;
-     - **Segurança de dados (LGPD)**: Garantir que um cliente só consulte pedidos da tabela `vw_pedidos_detalhados` que pertençam ao seu próprio CPF/ID autenticado.
-3. **Humanização Adaptativa do Tom de Conversa**:
-   - Refinar o estilo de resposta conforme o canal e o perfil do cliente — por exemplo, adotando mensagens mais curtas e divididas em blocos rápidos quando integrado ao WhatsApp, reduzindo qualquer aspecto robótico de listas longas quando o cliente faz perguntas abertas.
-4. **Busca Híbrida no Catálogo (Filtros SQL + Embeddings de Produtos)**:
-   - Combinar os filtros exatos da `vw_catalogo_produtos` (preço, marca, disponibilidade) com busca vetorial nas descrições dos instrumentos para capturar buscas mais subjetivas (ex.: *"quero um timbre mais encorpado para tocar MPB"*).
+See [`examples/exemplos_conversas.md`](examples/exemplos_conversas.md) for five documented scenarios, including product availability, order tracking, policy questions, and requests that require both retrieval tools.
 
----
+## Limitations and Future Improvements
 
-## 5. Uso de Ferramentas de IA no Desenvolvimento
+**Current limitations**
+- SQLite and the FAISS index are local to the application.
+- Conversation context is maintained only during the active Streamlit session; it is not persisted across sessions.
+- SQL validation is basic and is not production-grade database security.
+- The current workflow uses a single configured LLM rather than selecting models by task.
 
-Utilizei assistentes de IA (**Claude** e **Antigravity / Gemini**) como ferramentas de apoio durante o desenvolvimento, mantendo a liderança técnica sobre a arquitetura, modelagem de dados e revisão linha a linha:
+**Possible improvements**
+- **Task-specific model evaluation:** compare models with different capability, cost, and latency profiles. A stronger model could handle complex Text-to-SQL generation, while smaller local models (such as Llama or Gemma variants) and local embedding models could be evaluated for policy retrieval and simpler language tasks. A lightweight model could also be tested for synthesizing final answers after tool execution. Any model selection strategy should be validated against answer quality, latency, and cost before adoption.
+- **Quality evaluation:** build a test set covering SQL correctness, retrieval relevance, factual consistency, and answer usefulness. Frameworks such as DeepEval could support automated evaluation, complemented by review from people familiar with the store's products and policies.
+- **Production readiness:** add authenticated customer sessions, server-side order authorization, persistent conversation history, and human-agent handoff with an automatic conversation summary.
+- **Improved product discovery:** combine SQL filters with semantic search over product descriptions.
 
-1. **Base Arquitetural Própria**:
-   - A estrutura modular do projeto não foi gerada aleatoriamente por IA; ela foi adaptada a partir de dois projetos autorais que desenvolvi anteriormente:
-     - [`geracao-relatorios`](https://github.com/cesaryuri/geracao-relatorios): de onde trouxe a arquitetura do grafo LangGraph (`agent/graph.py`), o desacoplamento de provedores (`agent/llm.py`), a sanitização do SQLite (`db/database.py`) e a organização modular de prompts.
-     - [`faq-chatbot-creches`](https://github.com/cesaryuri/faq-chatbot-creches): de onde reaproveitei a arquitetura de ingestão de PDF (`rag/pdf_processor.py`) e o gerenciamento de índice FAISS local com cache inteligente (`rag/vectorstore.py`).
-2. **Análise Exploratória e Modelagem antes do Código**:
-   - Construí o notebook `notebooks/analise_exploratoria.ipynb` para inspecionar as 6 tabelas e o PDF antes de configurar o agente. Foi nessa etapa que defini a criação das views `vw_catalogo_produtos` e `vw_pedidos_detalhados` para blindar o cálculo do PIX não cumulativo e filtrar promoções inativas.
-3. **Casos Reais em que Direcionei e Corrigi a IA durante os Testes**:
-   - **Desacoplamento da Inicialização (`agent/chatbot.py`) e Cache de Recursos**: Durante a revisão de código do `app.py`, identifiquei que apenas a conexão com o banco e o vectorstore estavam dentro do `@st.cache_resource`, fazendo com que a leitura do schema (`db.get_table_info()`), a montagem das tools e a compilação do grafo (`build_graph`) rodassem novamente a cada clique no Streamlit — além de conter variáveis herdadas sem uso (`DB_ALLOWED_TABLES`). Direcionei a extração de toda essa montagem para [`create_chatbot()`](agent/chatbot.py) encapsulada no `@st.cache_resource`, deixando o `app.py` enxuto e sem retrabalho a cada turno.
-   - **Ajuste de UX Conversacional no Prompt**: Inicialmente o assistente respondia informando a quantidade exata do estoque (*"Estoque disponível: 4 unidades"*). Identifiquei que essa informação só faz sentido para um vendedor interno, não para o consumidor final. Orientei a refatoração das regras em `prompts/prompt_rules.py` para manter respostas enxutas, humanas e focadas no que o cliente perguntou, além de sugerir alternativas reais quando um produto está zerado.
-   - **Prototipação no Figma e Correção de CSS no Streamlit**: Utilizei o Figma para desenhar a interface desejada e criei uma branch isolada (`test/ui-figma`) para implementar os componentes visuais. Quando o container global `.block-container` desalinhou a barra inferior `st.chat_input`, inspecionei o DOM pelo navegador e direcionei a correção para os seletores específicos `[data-testid="stMainBlockContainer"]` e `[data-testid="stBottomBlockContainer"]`.
+## AI-Assisted Development
+
+I used Claude and Antigravity with Gemini as development-support tools for exploration, implementation assistance, and code review.
+
+The Streamlit interface was developed based on a Figma prototype, which helped guide the visual layout and user experience. AI-generated suggestions were reviewed and adapted to the project's requirements, including improvements to chatbot initialization, customer-facing stock responses, and interface styling. The final implementation and technical decisions were evaluated against the challenge requirements.
