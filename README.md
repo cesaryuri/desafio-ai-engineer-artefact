@@ -4,6 +4,36 @@ A full-stack conversational assistant for a fictional music store in Campo Grand
 
 The application combines **Text-to-SQL** for structured store data and **RAG** for policy documents. **LangGraph** orchestrates the agent workflow, and **Streamlit** provides the chat interface.
 
+## Application Preview
+
+<!-- Add two real screenshots of the application to docs/images/. -->
+| Main interface | Example conversation |
+|---|---|
+| ![Main application interface](docs/images/app-home.png) | ![Assistant conversation](docs/images/app-conversation.png) |
+
+## Example Interactions
+
+The following short examples are taken from actual application runs, demonstrating the assistant's main capabilities.
+
+### 1. Product and Availability Query
+
+- **Customer:** "Estou começando a tocar violão agora, quero um modelo confortável com bom som mas sem gastar muito. O que você me indica?"
+- **Assistant:** Recommends accessible nylon-string options for beginner comfort (Tagima Memphis AC-39 at R$ 429.90, Rozini RC-104 at R$ 459.90, Yamaha C40 at R$ 599.90) and suggests a steel-string alternative (Shelby SN-100 Folk at R$ 549.00) for players seeking a brighter acoustic sound.
+- **Customer:** "Shelby SN-100 Folk Aço Preto"
+- **Assistant:** Confirms availability and price (R$ 549.00) directly from the SQLite catalog view (`vw_catalogo_produtos`).
+
+### 2. Order Status Query (Hybrid with Store Policies)
+
+- **Customer:** "Olá! Sou o Lucas Mendes da Silva, fiz o pedido #4. Qual foi o produto que comprei, qual o status da entrega e se tiver defeito ou me arrepender, quais são as regras de devolução e garantia?"
+- **Assistant:**
+  - *Data retrieved via SQL:* Order #4 (Giannini GF-3D Dreadnought Sunburst, R$ 799.90, status `delivered`).
+  - *Policies retrieved via RAG:* 7-day online purchase withdrawal right with free return shipping, 30-day store defect exchange, and 1-year manufacturer warranty.
+
+### 3. Store Policy and Active Promotion Question
+
+- **Customer:** "O violão Taylor 110e Dreadnought está em promoção? Quanto fica no PIX?"
+- **Assistant:** Confirms the active 8% promotional discount (R$ 5,999.00 -> R$ 5,519.08) and explains that the 5% Pix discount does not stack with active promotions, applying the most favorable discount.
+
 ## Architecture
 
 CSV data is cleaned and loaded into SQLite. The store policy PDF is indexed in FAISS. A LangGraph agent chooses the appropriate retrieval tool and returns the response through Streamlit.
