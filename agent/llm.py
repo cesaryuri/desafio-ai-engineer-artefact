@@ -1,4 +1,5 @@
 import os
+from openai import OpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_ollama import ChatOllama, OllamaEmbeddings
@@ -6,6 +7,7 @@ from langchain_anthropic import ChatAnthropic
 
 DEFAULT_MODEL = os.getenv("LLM_MODEL", "gpt-5.4-mini")  # gemini-3.8-flash | gpt-5.4-mini | claude-haiku-4-5-20251001 | claude-sonnet-5
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")  # google | openai | anthropic | ollama
+STT_MODEL = os.getenv("OPENAI_STT_MODEL", "gpt-4o-mini-transcribe")
 
     #   Google:
     #   gemini-3.8-flash
@@ -70,3 +72,15 @@ def build_llm(tools: list):
         raise ValueError(f"LLM_PROVIDER desconhecido: {provider!r}")
 
     return llm.bind_tools(tools), model
+
+
+def transcribe_audio(audio_file) -> str:
+    client = OpenAI()
+    model = os.getenv("OPENAI_STT_MODEL", STT_MODEL)
+    transcription = client.audio.transcriptions.create(
+        model=model,
+        file=audio_file,
+        language="pt",
+    )
+    return transcription.text.strip()
+

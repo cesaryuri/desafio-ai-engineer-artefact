@@ -6,7 +6,7 @@ from langchain_core.runnables import RunnableConfig
 
 from db.database import get_db
 from rag.vectorstore import initialize_rag_system
-from agent.llm import build_llm
+from agent.llm import build_llm, transcribe_audio
 from agent.tools import make_tools
 from agent.graph import build_graph
 from prompts.system_prompt import build_system_prompt
@@ -88,14 +88,26 @@ else:
                 with st.chat_message("assistant", avatar=ASSISTANT_AVATAR_SVG):
                     st.markdown(texto)
 
-chat_prompt = st.chat_input("Pergunte sobre instrumentos, pedidos ou políticas da loja…")
+chat_submission = st.chat_input(
+    "Pergunte sobre instrumentos, pedidos ou políticas da loja…",
+    accept_audio=True,
+)
+
+chat_prompt = None
+if chat_submission:
+    if isinstance(chat_submission, str):
+        chat_prompt = chat_submission
+    elif getattr(chat_submission, "text", None):
+        chat_prompt = chat_submission.text
+    elif getattr(chat_submission, "audio", None):
+        with st.spinner("🎙️ Transcrevendo áudio..."):
+            chat_prompt = transcribe_audio(chat_submission.audio)
 
 active_prompt = quick_prompt or chat_prompt
 
 if active_prompt:
     st.session_state["messages"].append(HumanMessage(active_prompt))
-    if has_user_messages:
-        render_user_message(active_prompt)
+    render_user_message(active_prompt)
 
     with st.chat_message("assistant", avatar=ASSISTANT_AVATAR_SVG):
         with st.status("Processando sua solicitação...", expanded=True) as status:
@@ -139,5 +151,5 @@ if active_prompt:
         if resposta_final:
             st.markdown(resposta_final)
 
-    if quick_prompt:
+    if not has_user_messages:
         st.rerun()
