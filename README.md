@@ -6,13 +6,11 @@ The application combines **Text-to-SQL** for structured store data and **RAG** f
 
 ## Application Preview
 
-| Main interface | Example conversation |
+| Main interface (Figma Design) | Example conversation (Catalog Query) |
 |---|---|
 | ![Main application interface](examples/images/app-home.png) | ![Assistant conversation](examples/images/app-conversation.png) |
 
 ## Example Interactions
-
-The following short examples are taken from actual application runs, demonstrating the assistant's main capabilities.
 
 ### 1. Product and Availability Query
 
@@ -113,8 +111,8 @@ desafio-ai-engineer-artefact/
 ├── agent/        # Chatbot initialization, LangGraph workflow, LLMs, and tools
 ├── data/         # Six CSV files and store policy PDF
 ├── db/           # CSV cleaning, SQLite setup, and SQL views
-├── examples/images/  # UI screenshots
-├── examples/     # Five example conversation scenarios
+├── examples/     # Documented conversation scenarios and screenshots
+│   └── images/   # Real UI application captures
 ├── notebooks/    # Exploratory analysis of tables and business rules
 ├── prompts/      # System prompt and customer-service rules
 ├── rag/          # PDF processing and FAISS index
@@ -159,31 +157,33 @@ pip install -r requirements.txt
 
 ### 4. Configure environment variables
 
-Copy `.env.example` to `.env` and add your API key.
+Create a `.env` file in the project root directory and add your API credentials.
 
-**Linux / macOS**
-```bash
-cp .env.example .env
-```
-
-**Windows (PowerShell)**
-```powershell
-Copy-Item .env.example .env
-```
-
-Example configuration:
+Example `.env` configuration:
 
 ```env
+# Database (leave empty to automatically use the local SQLite generated at db/emporio_musica.db)
+DATABASE_URL=""
+
+# LLM Provider and Model
 LLM_PROVIDER="openai"
 LLM_MODEL="gpt-5.4-mini"
+
+# RAG Vector Store Embeddings (FAISS)
 EMBEDDING_PROVIDER="openai"
 EMBEDDING_MODEL="text-embedding-3-small"
+
+# Speech-to-Text Model (Voice Input)
+OPENAI_STT_MODEL="gpt-4o-mini-transcribe"
+
+# API Key
 OPENAI_API_KEY="your-openai-api-key"
-DATABASE_URL="sqlite:///db/emporio_musica.db"
+
+# Maximum agent tool iterations per turn
 MAX_AGENT_STEPS="10"
 ```
 
-Do not commit `.env` or expose API keys.
+> **Security Note:** Do not commit `.env` or expose API keys. The `.env` file is already included in `.gitignore`.
 
 ### 5. Run the application
 
@@ -202,12 +202,12 @@ See [`examples/exemplos_conversas.md`](examples/exemplos_conversas.md) for five 
 **Current limitations**
 - SQLite and the FAISS index are local to the application.
 - Conversation context is maintained only during the active Streamlit session; it is not persisted across sessions.
-- **Context cross-contamination in long dialogues:** In extended multi-turn sessions (e.g. querying a customer order and later requesting general store support contacts), the LLM can occasionally pull customer-specific details (such as the customer phone or email from previous tool calls) instead of official store contacts. When asked to clarify, the agent correctly queries search_store_policies and self-corrects with official store contacts.
+- **Context cross-contamination in long dialogues:** In extended multi-turn sessions (e.g. querying a customer order and later requesting general store support contacts), the LLM can occasionally pull customer-specific details (such as the customer phone or email from previous tool calls) instead of official store contacts. When asked to clarify, the agent correctly queries `search_store_policies` and self-corrects with official store contacts.
 - SQL validation is basic and is not production-grade database security.
 - The current workflow uses a single configured LLM rather than selecting models by task.
 
 **Possible improvements**
-- **Deterministic store-support tool and PII scrubbing:** Add a dedicated, deterministic get_store_info tool for official store channels instead of relying on semantic RAG retrieval, combined with PII masking in SQL outputs (e.g. lu***@jmail.com) to prevent customer data from leaking into institutional responses.
+- **Deterministic store-support tool and PII scrubbing:** Add a dedicated, deterministic `get_store_info` tool for official store channels instead of relying on semantic RAG retrieval, combined with PII masking in SQL outputs (e.g. `lu***@jmail.com`) to prevent customer data from leaking into institutional responses.
 - **Task-specific model evaluation:** compare models with different capability, cost, and latency profiles. A stronger model could handle complex Text-to-SQL generation, while smaller local models (such as Llama or Gemma variants) and local embedding models could be evaluated for policy retrieval and simpler language tasks. A lightweight model could also be tested for synthesizing final answers after tool execution. Any model selection strategy should be validated against answer quality, latency, and cost before adoption.
 - **Quality evaluation:** build a test set covering SQL correctness, retrieval relevance, factual consistency, and answer usefulness. Frameworks such as DeepEval could support automated evaluation, complemented by review from people familiar with the store's products and policies.
 - **Production readiness:** add authenticated customer sessions, server-side order authorization, persistent conversation history, and human-agent handoff with an automatic conversation summary.
